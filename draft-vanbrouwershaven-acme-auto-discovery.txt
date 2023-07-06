@@ -13,16 +13,25 @@ Expires: 7 January 2024                                      6 July 2023
 
 Abstract
 
-   This document presents a mechanism for automatically discovering the
-   ACME (Automated Certificate Management Environment) [RFC8555] client
-   configuration for the relevant domain name(s) in a shared
-   environment.  The mechanism leverages the DNS Certification Authority
-   Authorization (CAA) Resource Record [RFC8659] to determine the
-   authorized Certification Authorities (CAs) capable of issuing
-   certificates for the given domain name(s).  By retrieving
-   instructions for the ACME client from the authorized CA(s), this
-   mechanism allows for improved user preferences, increased diversity
-   in certificate issuers, and an option to specify backup CA(s).
+   A significant impediment to the widespread adoption of the Automated
+   Certificate Management Environment (ACME) [RFC8555] is that ACME
+   clients need to be pre-configured with the URL of the ACME server to
+   be used.  This often leaves domain owners at the mercy of their
+   hosting provider as to which Certification Authorities (CAs) can be
+   used.  This specification provides a mechanism to bootstrap ACME
+   client configuration from a domain's DNS CAA Resource Record
+   [RFC8659], thus giving control of which CA(s) to use back to the
+   domain owner.
+
+   Specifically, this document specifies two new extensions to the DNS
+   CAA Resource Record: the "discovery" and "priority" parameters.
+   Additionally, it registers the URI "/.well-known/acme" at which all
+   compliant ACME servers will host their ACME directory object.  By
+   retrieving instructions for the ACME client from the authorized
+   CA(s), this mechanism allows for the domain owner to configure
+   multiple CAs in either load-balanced or fallback prioritizations
+   which improves user preferences and increases diversity in
+   certificate issuers.
 
 About This Document
 
@@ -93,9 +102,10 @@ Table of Contents
      8.1.  Risks with Auto-Discovery of Authorized CAs
        8.1.1.  Unexpected Certificate Issuance
        8.1.2.  Issuance by the 'wrong' authorized CA
-     8.2.  Terms of Service and Acceptance
-       8.2.1.  Implicit Acceptance of Terms of Service
-       8.2.2.  Acceptance Through CAA Attribute
+     8.2.  Malicious ACME Servers
+     8.3.  Terms of Service and Acceptance
+       8.3.1.  Implicit Acceptance of Terms of Service
+       8.3.2.  Acceptance Through CAA Attribute
    9.  References
      9.1.  Normative References
      9.2.  Informative References
@@ -270,7 +280,7 @@ Table of Contents
    For instance, when the CAA record restricts certificate issuance to
    the CA "ca.example" for the domain "example.com", the ACME client
    retrieves the ACME directory object as specified in Section 7.1.1 of
-   ACME [RFC 8555] from the URL "https://ca.example/.well-known/acme".
+   ACME [RFC8555] from the URL "https://ca.example/.well-known/acme".
 
    While an alternative consideration was to include the ACME server
    address directly as an attribute in the CAA record, it was determined
@@ -292,6 +302,35 @@ Table of Contents
 
    The process looks as follows:
 
+   +-------------+                          +--------------------------+
+   |             |                          |                          |
+   |             |  1. DNS Lookup (CAA)     |       DNS Resolver       |
+   | ACME Client +------------------------->+                          |
+   |             |                          +------------+-------------+
+   |             |<---------+                            |
+   +----------+--+          |                            v
+            ^ |             |               +--------------------------+
+            | |             | DNS Response  | example.com CAA          |
+            | |             +---------------+ Record:                  |
+            | |                             |                          |
+            | |     2. Select issuer (CA)   | example.com              |
+            | |        based on priority    | CAA 0 issue "ca.example  |
+            | |                             +--------------------------+
+            | |
+            | |                             +--------------------------+
+            | |     3. Connect issuer (CA)  |                          |
+            | +---------------------------->+  https://example.ca/     |
+            |                               |        .well-known/acme  |
+            |                               |                          |
+            |                               +------------+-------------+
+            |                                            | Redirect
+            |                                            v or alias
+            |                               +--------------------------+
+            |     ACME Directory Object     |                          |
+            +-------------------------------+ https://acme.ca.example/ |
+                                            |                          |
+                                            +--------------------------+
+
    1.  The ACME client initiates a DNS lookup to retrieve the CAA
        record(s) according to [RFC8659].  a.  The DNS resolver responds
        with the CAA record for each domain, specifying the authorized
@@ -305,10 +344,11 @@ Table of Contents
        known location of the issuer-domain-name of the selected CA
        (https://[issuer-domain-name]/.well-known/acme)
 
-   4.  If an External Account Binding is required but not configured the
-       ACME client will try to determine an alternative common CA in
-       step 2.  a.  If no alternative CA can be found, the process with
-       end with a failure and the user will be informed.
+   4.  If the directory object indicates that an External Account
+       Binding is required, but this is not configured on the ACME
+       client, the client will try to determine an alternative common CA
+       in step 2.  a.  If no alternative CA can be found, the process
+       with end with a failure and the user will be informed.
 
    5.  The ACME client proceeds with the ACME challenge process, where
        it interacts with the ACME server to complete the required
@@ -345,11 +385,11 @@ Table of Contents
    caused by unresponsive CAs and allows the client to focus on viable
    options for obtaining the required certificate.
 
-   ACME clients MUST notify the user if the enrollment of a certificate
-   from a specific CA fails multiple times, even if the client
-   successfully obtains a certificate from an alternative CA.  This
-   notification is essential to ensure that users are promptly informed
-   about recurring enrollment failures, allowing them to take
+   ACME clients SHOULD notify the user if the enrollment of a
+   certificate from a specific CA fails multiple times, even if the
+   client successfully obtains a certificate from an alternative CA.
+   This notification is essential to ensure that users are promptly
+   informed about recurring enrollment failures, allowing them to take
    appropriate measures.  By providing such notifications, clients
    enable users to assess and address any underlying issues, seek
    alternative solutions, or make informed decisions regarding their
@@ -531,8 +571,8 @@ Table of Contents
    Specification document(s): RFC XXXX, Section Y.Z
    Related information: N/A
 
-   [[ RFC EDITOR: Please replace XXXX above with the RFC number assigned
-   to this document ]]
+   RFC EDITOR: Please replace XXXX above with the RFC number assigned to
+   this document
 
    // TODO: add CAA attributes (not sure if these can be registered)
 
@@ -575,13 +615,28 @@ Table of Contents
    feedback to users regarding the CA from which certificates will be
    obtained, ensuring that it aligns with their expectations.
 
-8.2.  Terms of Service and Acceptance
+8.2.  Malicious ACME Servers
+
+   One potential security risk associated with the mechanism defined in
+   this document is the possibility of domain owners placing links to
+   malicious ACME servers into their DNS CAA Resource Records in order
+   to attack the infrastructure of hosting providers.  Malicious actors
+   could exploit vulnerabilities in the ACME client implementation or
+   inject malicious code, potentially leading to unauthorized access or
+   remote code execution on the client's system.
+
+   To minimize this risk, ACME clients must be written with a cautious
+   and security-conscious approach when interacting with ACME servers.
+   It is crucial not to blindly trust servers to behave securely and in
+   accordance with the ACME protocol.
+
+8.3.  Terms of Service and Acceptance
 
    The terms of service associated with different CAs can vary, and it
    is important to consider how these terms are handled within the
    context of auto-discovery.
 
-8.2.1.  Implicit Acceptance of Terms of Service
+8.3.1.  Implicit Acceptance of Terms of Service
 
    As the ACME client is not explicitly controlled by the user in a
    shared environment, the user's explicit approval of the terms of
@@ -597,7 +652,7 @@ Table of Contents
    ensures compliance with the terms of service set by the authorized
    CA.
 
-8.2.2.  Acceptance Through CAA Attribute
+8.3.2.  Acceptance Through CAA Attribute
 
    One potential enhancement to address the explicit acceptance of terms
    of service is the inclusion of a CAA attribute called
