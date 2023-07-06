@@ -1322,34 +1322,44 @@ The value of this parameter, if specified, <span class="bcp14">MUST</span> be a 
         </h3>
 <p id="section-3.2-1">This section shows some examples of how CAA records can be configured in the context of ACME auto discovery. CAA records are used to authorize Certification Authorities (CAs) to issue certificates for a specific domain name.<a href="#section-3.2-1" class="pilcrow">¶</a></p>
 <p id="section-3.2-2">A simple CAA record allows the issuance of certificates from a single designated CA. In the following example, the CAA record for the domain "example.com" authorizes the CA "ca.example" to issue certificates. However, it does not specify any backup CA. Consequently, if the authorized CA is unable to issue the requested certificate, the certificate issuance will fail.<a href="#section-3.2-2" class="pilcrow">¶</a></p>
-<p id="section-3.2-3"><code>
+<div class="lang-dns-rr sourcecode" id="section-3.2-3">
+<pre>
 example.com CAA 0 issue "ca.example"
-</code><a href="#section-3.2-3" class="pilcrow">¶</a></p>
+</pre><a href="#section-3.2-3" class="pilcrow">¶</a>
+</div>
 <p id="section-3.2-4">By default, when multiple CAA records are present, the CAs are randomized to distribute the load. However, some users may have preferences regarding the order in which CAs are attempted for certificate issuance. To explicitly specify the order, the "priority" parameter can be used.<a href="#section-3.2-4" class="pilcrow">¶</a></p>
 <p id="section-3.2-5">In the next example, the domain "example.com" has two CAA records. The CAA record with "ca2.example" has a higher priority value of 2, indicating it should be attempted first. The CAA record with "ca1.example" has a lower priority value of 1, indicating it should be attempted second.<a href="#section-3.2-5" class="pilcrow">¶</a></p>
-<p id="section-3.2-6"><code>
+<div class="lang-dns-rr sourcecode" id="section-3.2-6">
+<pre>
 example.com CAA 0 issue "ca1.example; priority=2"
 example.com CAA 0 issue "ca2.example; priority=1"
-</code><a href="#section-3.2-6" class="pilcrow">¶</a></p>
+</pre><a href="#section-3.2-6" class="pilcrow">¶</a>
+</div>
 <p id="section-3.2-7">CAA records that do not explicitly specify a priority are automatically assigned the highest priority, which is 0. In cases where multiple CAA records have the same priority, the usage will be randomized.<a href="#section-3.2-7" class="pilcrow">¶</a></p>
 <p id="section-3.2-8">Consider the following example, where the domain "example.com" has three CAA records. The CAA record with "ca1.example" has no specified priority, and thus it is assigned the highest priority of 0. The CAA records with "ca2.example" and "ca3.example" both have a priority of 1. In this scenario, the ACME client will first attempt to obtain its configuration from "ca1.example". If that fails, it will randomly select either "ca2.example" or "ca3.example" and attempt to obtain the configuration. If all attempts fail, the certificate issuance will ultimately fail.<a href="#section-3.2-8" class="pilcrow">¶</a></p>
-<p id="section-3.2-9"><code>
+<div class="lang-dns-rr sourcecode" id="section-3.2-9">
+<pre>
 example.com CAA 0 issue "ca1.example"
 example.com CAA 0 issue "ca2.example; priority=1"
 example.com CAA 0 issue "ca3.example; priority=1"
-</code><a href="#section-3.2-9" class="pilcrow">¶</a></p>
+</pre><a href="#section-3.2-9" class="pilcrow">¶</a>
+</div>
 <p id="section-3.2-10">Furthermore, it is possible to configure CAA records to indicate a preference for specific types of certificates. In the following example, the domain "example.com" prefers Extended Validation (EV) certificates issued by "ca1.example". If the issuance of an EV certificate fails, the ACME client will attempt to obtain any type of certificate from "ca1.example". If that also fails, it will then try to obtain any type of certificate from "ca2.example".<a href="#section-3.2-10" class="pilcrow">¶</a></p>
-<p id="section-3.2-11"><code>
+<div class="lang-dns-rr sourcecode" id="section-3.2-11">
+<pre>
 example.com CAA 0 issue "ca1.example; validationmethods=ca-ev"
 example.com CAA 0 issue "ca1.example; priority=1"
 example.com CAA 0 issue "ca2.example; priority=2"
-</code><a href="#section-3.2-11" class="pilcrow">¶</a></p>
+</pre><a href="#section-3.2-11" class="pilcrow">¶</a>
+</div>
 <p id="section-3.2-12">Implementers and operators should carefully configure CAA records according to their specific requirements and considerations.
 // COMMENT: If a mechanism for enabling or disabling auto-discovery is required, users may need to configure their preferences accordingly. While enabling auto-discovery by default could promote adoption, it could lead to unexpected certificate issuance (see the security considerations). For instance, in the given example, if the default setting is set to false, only CA 2 will be used to retrieve the ACME client configuration.<a href="#section-3.2-12" class="pilcrow">¶</a></p>
-<p id="section-3.2-13"><code>
+<div class="lang-dns-rr sourcecode" id="section-3.2-13">
+<pre>
 example.com CAA 0 issue "ca1.example"
 example.com CAA 0 issue "ca2.example; discovery=true"
-</code><a href="#section-3.2-13" class="pilcrow">¶</a></p>
+</pre><a href="#section-3.2-13" class="pilcrow">¶</a>
+</div>
 </section>
 </div>
 </section>
@@ -1439,25 +1449,25 @@ It is important for implementers and operators to ensure the availability and ac
         <h3 id="name-internal-account-binding-us">
 <a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-internal-account-binding-us" class="section-name selfRef">Internal Account Binding using Domain Control Validation</a>
         </h3>
-<p id="section-6.1-1">In addition to the external account binding mechanism, an alternative approach can be implemented by the CAs that offers distinct advantages, particularly in cases where service providers may not expose the account binding configuration options to their users. This alternative method leverages domain control validation as the initial step in the process and subsequently pauses to await confirmation from the account holder regarding the account binding. The email address associated with the account can be utilized for differentiating between multiple Certification Authority (CA) accounts holding the same domain name.
-The process to establish an internal account binding would be as follows:<a href="#section-6.1-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-6.1-2">
-<li id="section-6.1-2.1">The user adds the domain name to their Certification Authority (CA) account and completes the domain control verification process within this account.<a href="#section-6.1-2.1" class="pilcrow">¶</a>
+<p id="section-6.1-1">In addition to the external account binding mechanism, an alternative approach can be implemented by the CAs that offers distinct advantages, particularly in cases where service providers may not expose the account binding configuration options to their users. This alternative method leverages domain control validation as the initial step in the process and subsequently pauses to await confirmation from the account holder regarding the account binding. The email address associated with the ACME account can be utilized for differentiating between multiple Certification Authority (CA) accounts holding the same domain name.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<p id="section-6.1-2">The process to establish an internal account binding would be as follows:<a href="#section-6.1-2" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-6.1-3">
+<li id="section-6.1-3.1">The user adds the domain name to their Certification Authority (CA) account and completes the domain control verification process within this account.<a href="#section-6.1-3.1" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.1-2.2">The user initiates the ACME process for certificate issuance or a new authorization.<a href="#section-6.1-2.2" class="pilcrow">¶</a>
+          <li id="section-6.1-3.2">The user initiates the ACME process for certificate issuance or a new authorization.<a href="#section-6.1-3.2" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.1-2.3">The ACME client validates domain control for the requested domain.<a href="#section-6.1-2.3" class="pilcrow">¶</a>
+          <li id="section-6.1-3.3">The ACME client validates domain control for the requested domain.<a href="#section-6.1-3.3" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.1-2.4">Upon successful domain control validation the CA does not mark the authorizations as completed but awaits the completion of the account binding.<a href="#section-6.1-2.4" class="pilcrow">¶</a>
+          <li id="section-6.1-3.4">Upon successful domain control validation the CA does not mark the authorizations as completed but awaits the completion of the account binding.<a href="#section-6.1-3.4" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.1-2.5">The CA, having confirmed domain control, uses the provided email address associated with the ACME account to distinguish between different CA accounts that have confirmed control over the same domain name.<a href="#section-6.1-2.5" class="pilcrow">¶</a>
+          <li id="section-6.1-3.5">The CA, having confirmed domain control, uses the provided email address associated with the ACME account to distinguish between different CA accounts that have confirmed control over the same domain name.<a href="#section-6.1-3.5" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.1-2.6">The account holder receives a notification or prompt and confirms the account binding within the CA's system.<a href="#section-6.1-2.6" class="pilcrow">¶</a>
+          <li id="section-6.1-3.6">The account holder receives a notification or prompt and confirms the account binding within the CA's system.<a href="#section-6.1-3.6" class="pilcrow">¶</a>
 </li>
-          <li id="section-6.1-2.7">Once the account binding is confirmed, the CA marks the ACME authorization as completed and the ACME client proceeds with the remaining steps of the ACME process, such as finalizing the certificate issuance.<a href="#section-6.1-2.7" class="pilcrow">¶</a>
+          <li id="section-6.1-3.7">Once the account binding is confirmed, the CA marks the ACME authorization as completed and the ACME client proceeds with the remaining steps of the ACME process, such as finalizing the certificate issuance.<a href="#section-6.1-3.7" class="pilcrow">¶</a>
 </li>
         </ol>
-<p id="section-6.1-3">It is important to note that before the ACME process can start, the domain name must be added to the CA account and the domain control validation process must be successfully completed. This ensures that the domain ownership is verified for both accounts before proceeding with the account binding.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+<p id="section-6.1-4">It is important to note that before the ACME process can start, the domain name must be added to the CA account and the domain control validation process must be successfully completed. This ensures that the domain ownership is verified for both accounts before proceeding with the account binding.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="internal-account-binding-using-email-address">

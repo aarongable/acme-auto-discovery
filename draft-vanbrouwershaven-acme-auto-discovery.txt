@@ -205,8 +205,8 @@ Table of Contents
    "ca1.example" has a lower priority value of 1, indicating it should
    be attempted second.
 
-   example.com CAA 0 issue "ca1.example; priority=2" example.com CAA 0
-   issue "ca2.example; priority=1"
+   example.com CAA 0 issue "ca1.example; priority=2"
+   example.com CAA 0 issue "ca2.example; priority=1"
 
    CAA records that do not explicitly specify a priority are
    automatically assigned the highest priority, which is 0.  In cases
@@ -223,9 +223,9 @@ Table of Contents
    attempt to obtain the configuration.  If all attempts fail, the
    certificate issuance will ultimately fail.
 
-   example.com CAA 0 issue "ca1.example" example.com CAA 0 issue
-   "ca2.example; priority=1" example.com CAA 0 issue "ca3.example;
-   priority=1"
+   example.com CAA 0 issue "ca1.example"
+   example.com CAA 0 issue "ca2.example; priority=1"
+   example.com CAA 0 issue "ca3.example; priority=1"
 
    Furthermore, it is possible to configure CAA records to indicate a
    preference for specific types of certificates.  In the following
@@ -236,8 +236,8 @@ Table of Contents
    to obtain any type of certificate from "ca2.example".
 
    example.com CAA 0 issue "ca1.example; validationmethods=ca-ev"
-   example.com CAA 0 issue "ca1.example; priority=1" example.com CAA 0
-   issue "ca2.example; priority=2"
+   example.com CAA 0 issue "ca1.example; priority=1"
+   example.com CAA 0 issue "ca2.example; priority=2"
 
    Implementers and operators should carefully configure CAA records
    according to their specific requirements and considerations. //
@@ -249,8 +249,8 @@ Table of Contents
    setting is set to false, only CA 2 will be used to retrieve the ACME
    client configuration.
 
-   example.com CAA 0 issue "ca1.example" example.com CAA 0 issue
-   "ca2.example; discovery=true"
+   example.com CAA 0 issue "ca1.example"
+   example.com CAA 0 issue "ca2.example; discovery=true"
 
 4.  ACME Client Configuration
 
@@ -458,10 +458,12 @@ Table of Contents
    This alternative method leverages domain control validation as the
    initial step in the process and subsequently pauses to await
    confirmation from the account holder regarding the account binding.
-   The email address associated with the account can be utilized for
-   differentiating between multiple Certification Authority (CA)
-   accounts holding the same domain name.  The process to establish an
-   internal account binding would be as follows:
+   The email address associated with the ACME account can be utilized
+   for differentiating between multiple Certification Authority (CA)
+   accounts holding the same domain name.
+
+   The process to establish an internal account binding would be as
+   follows:
 
    1.  The user adds the domain name to their Certification Authority
        (CA) account and completes the domain control verification
